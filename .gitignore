@@ -51,3 +51,9 @@ tests/**/*.geobuf
 
 # Nodejs
 node_modules
+
+# Environment Variables
+.env
+
+# build
+/build

@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug tippecanoe",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/tippecanoe",
+      "args": [
+        "-zg",
+        "--force",
+        "--detect-shared-borders",
+        "--visvalingam",
+        "--simplification=10",
+        "--simplify-only-low-zooms",
+        "--coalesce-densest-as-needed",
+        "--coalesce",
+        "--reorder",
+        "--no-line-simplification",
+        "--extend-zooms-if-still-dropping",
+        "-o",
+        "build/test.mbtiles",
+        "build/test.geojson"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "lldb",
+      "preLaunchTask": "build-debug"
+    }
+  ]
+}
