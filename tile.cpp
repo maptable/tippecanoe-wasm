@@ -2162,12 +2162,7 @@ long long write_tile(decompressor *geoms, std::atomic<long long> *geompos_in, ch
 			rpa.compressed = compressed_input;
 			rpa.droprate = arg->droprate;
 
-			// this does need to be a real thread, so we can pipe both to and from it
-			if (pthread_create(&prefilter_writer, NULL, run_prefilter, &rpa) != 0)
-			{
-				perror("pthread_create (prefilter writer)");
-				exit(EXIT_PTHREAD);
-			}
+			run_prefilter(&rpa);
 
 			prefilter_read_fp = fdopen(prefilter_read, "r");
 			if (prefilter_read_fp == NULL)
@@ -2663,12 +2658,6 @@ long long write_tile(decompressor *geoms, std::atomic<long long> *geompos_in, ch
 					break;
 				}
 			}
-			void *ret;
-			if (pthread_join(prefilter_writer, &ret) != 0)
-			{
-				perror("pthread_join prefilter writer");
-				exit(EXIT_PTHREAD);
-			}
 		}
 
 		for (int j = 0; j < child_shards; j++)
@@ -2838,31 +2827,7 @@ long long write_tile(decompressor *geoms, std::atomic<long long> *geompos_in, ch
 					args[i].shared_nodes_bloom = &shared_nodes_bloom;
 					args[i].trying_to_stop_early = trying_to_stop_early;
 
-					if (tasks > 1)
-					{
-						if (thread_create(&pthreads[i], NULL, simplification_worker, &args[i]) != 0)
-						{
-							perror("pthread_create");
-							exit(EXIT_PTHREAD);
-						}
-					}
-					else
-					{
-						simplification_worker(&args[i]);
-					}
-				}
-
-				if (tasks > 1)
-				{
-					for (int i = 0; i < tasks; i++)
-					{
-						void *retval;
-
-						if (pthread_join(pthreads[i], &retval) != 0)
-						{
-							perror("pthread_join");
-						}
-					}
+					simplification_worker(&args[i]);
 				}
 			}
 
@@ -3844,24 +3809,13 @@ int traverse_zooms(int *geomfd, off_t *geom_size, char *global_stringpool, std::
 				args[thread].shared_nodes_bloom = &shared_nodes_bloom;
 				args[thread].skip_children = &skip_children;
 				args[thread].skip_children_out.clear();
-
-				if (thread_create(&pthreads[thread], NULL, run_thread, &args[thread]) != 0)
-				{
-					perror("pthread_create");
-					exit(EXIT_PTHREAD);
-				}
 			}
 
 			bool again = false;
 			bool extend_zooms = false;
 			for (size_t thread = 0; thread < threads; thread++)
 			{
-				void *retval;
-
-				if (pthread_join(pthreads[thread], &retval) != 0)
-				{
-					perror("pthread_join");
-				}
+				void *retval = run_thread(&args[thread]);
 
 				if (retval != NULL)
 				{
