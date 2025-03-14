@@ -69,6 +69,20 @@
     "random": "cpp",
     "type_traits": "cpp",
     "utility": "cpp",
-    "cinttypes": "cpp"
+    "cinttypes": "cpp",
+    "hash_map": "cpp",
+    "forward_list": "cpp",
+    "list": "cpp",
+    "queue": "cpp",
+    "regex": "cpp",
+    "span": "cpp",
+    "stack": "cpp",
+    "unordered_set": "cpp",
+    "any": "cpp",
+    "ranges": "cpp",
+    "bitset": "cpp",
+    "print": "cpp",
+    "chrono": "cpp",
+    "coroutine": "cpp"
   }
 }

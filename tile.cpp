@@ -69,6 +69,8 @@ pthread_mutex_t db_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t var_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t task_lock = PTHREAD_MUTEX_INITIALIZER;
 
+void report_progress(double percentage, int step, const char *message);
+
 // convert serial feature geometry (drawvec) to output tile geometry (mvt_geometry)
 static std::vector<mvt_geometry> to_feature(drawvec const &geom)
 {
@@ -1326,11 +1328,9 @@ static serial_feature next_feature(decompressor *geoms, std::atomic<long long> *
 		double progress = floor(((((*geompos_in + *along - alongminus) / (double)todo) + pass) / passes + z) / (maxzoom + 1) * 1000) / 10;
 		if (progress >= *oprogress + 0.1)
 		{
-			if (!quiet && !quiet_progress && progress_time())
-			{
-				fprintf(stderr, "  %3.1f%%  %d/%u/%u  \r", progress, z, tx, ty);
-				fflush(stderr);
-			}
+			char message[64];
+			sprintf(message, "%d/%u/%u", z, tx, ty);
+			report_progress(progress, 5, message);
 			if (logger.json_enabled && progress_time())
 			{
 				logger.progress_tile(progress);
