@@ -10,19 +10,26 @@
 #include "json_logger.hpp"
 #include "serial.hpp"
 
-struct index {
+struct index
+{
 	long long start = 0;
 	long long end = 0;
 	unsigned long long ix = 0;
 	short segment = 0;
 	unsigned short t : 2;
-	unsigned long long seq : (64 - 18);  // pack with segment and t to stay in 32 bytes
+	unsigned long long seq : (64 - 18); // pack with segment and t to stay in 32 bytes
 
 	index()
-	    : t(0),
-	      seq(0) {
+		: t(0),
+		  seq(0)
+	{
 	}
 };
+
+typedef void (*progress_callback_type)(double percentage, int step, const char *message);
+
+// global progress callback
+extern progress_callback_type global_progress_callback;
 
 extern std::vector<clipbbox> clipbboxes;
 
@@ -55,13 +62,15 @@ extern size_t maximum_string_attribute_length;
 extern std::string accumulate_numeric;
 extern unsigned long long preserve_multiplier_density_threshold;
 
-struct order_field {
+struct order_field
+{
 	std::string name;
 	bool descending;
 
 	order_field(std::string _name, bool _descending)
-	    : name(_name),
-	      descending(_descending) {
+		: name(_name),
+		  descending(_descending)
+	{
 	}
 };
 

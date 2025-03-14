@@ -3,7 +3,6 @@
  * This file will be integrated into the main WASM JavaScript output
  */
 
-// We need to adapt the code to work with the Module object that Emscripten provides
 ;(function () {
   // Store the original module creation function
   var originalCreateModule = createTippecanoeModule
@@ -15,6 +14,18 @@
 
     // Ensure filesystem is initialized and available
     moduleOverrides.noFSInit = false
+
+    // Add proper error handling
+    moduleOverrides.onAbort = function (reason) {
+      console.error("WASM module aborted:", reason)
+      // If there's a progress callback, report the error
+      if (typeof progressCallbackRef === "function") {
+        progressCallbackRef(-1, "WASM aborted: " + reason)
+      }
+    }
+
+    // Save progress callback reference at module level for error reporting
+    var progressCallbackRef = null
 
     // Save any existing preRun functions
     var existingPreRun = moduleOverrides.preRun || []
@@ -34,6 +45,7 @@
         try {
           // Create the tmp directory early
           this.FS.mkdir("/tmp")
+          console.log("Successfully created /tmp directory")
         } catch (e) {
           // Directory might already exist
           console.log("Could not create /tmp directory (might already exist)")
@@ -80,7 +92,7 @@
           function getTimestamp() {
             const date = new Date()
             return date
-              .toLocaleString("zh-CN", {
+              .toLocaleString("en-US", {
                 year: "numeric",
                 month: "2-digit",
                 day: "2-digit",
@@ -91,6 +103,9 @@
               })
               .replace(/\//g, "-")
           }
+
+          // Progress callback variable
+          let _progressCallback = null
 
           return {
             // Initialize method - check file system readiness
@@ -105,6 +120,36 @@
               return Promise.resolve(Module)
             },
 
+            // Set progress callback
+            setProgressCallback: function (callback) {
+              _progressCallback = callback
+              progressCallbackRef = callback // Store at module level for error reporting
+
+              try {
+                // Wire up the C++ progress callback function
+                if (typeof Module.setProgressCallback === "function") {
+                  Module.setProgressCallback(function (
+                    progress,
+                    step,
+                    message
+                  ) {
+                    if (_progressCallback) {
+                      try {
+                        _progressCallback(progress, step, message)
+                      } catch (e) {
+                        console.error("Error in progress callback:", e)
+                      }
+                    }
+                  })
+                  console.log("Progress callback successfully registered")
+                } else {
+                  console.warn("C++ progress callback not available")
+                }
+              } catch (e) {
+                console.error("Error setting progress callback:", e)
+              }
+            },
+
             // Process GeoJSON to PMTiles or MBTiles
             processGeoJSON: function (geojsonContent, outputFormat, args) {
               try {
@@ -116,20 +161,60 @@
 
                 console.log(
                   `[${getTimestamp()}] Processing GeoJSON with format:`,
-                  outputFormat
+                  outputFormat,
+                  "Args:",
+                  args || "(none)"
                 )
 
-                var result = Module.processGeoJSON(
-                  geojsonContent,
-                  outputFormat,
-                  args || ""
-                )
+                // Notify progress start
+                if (_progressCallback) {
+                  _progressCallback(0, "Starting process...")
+                }
+
+                try {
+                  // Safety check for argument length
+                  if (geojsonContent && geojsonContent.length > 0) {
+                    console.log(
+                      "GeoJSON content length:",
+                      geojsonContent.length
+                    )
+                  } else {
+                    console.warn("Warning: Empty GeoJSON content")
+                    if (_progressCallback) {
+                      _progressCallback(-1, "Error: Empty GeoJSON content")
+                    }
+                    return Promise.reject(new Error("Empty GeoJSON content"))
+                  }
+
+                  var result = Module.processGeoJSON(
+                    geojsonContent,
+                    outputFormat || "pmtiles",
+                    args || ""
+                  )
+                } catch (e) {
+                  console.error("Exception during processGeoJSON call:", e)
+                  if (_progressCallback) {
+                    _progressCallback(-1, `Error: ${e.message || e}`)
+                  }
+                  return Promise.reject(e)
+                }
 
                 // check if result is valid
+                if (!result || result.size() === 0) {
+                  console.warn("Empty result from processGeoJSON")
+                  if (_progressCallback) {
+                    _progressCallback(-1, "Error: Empty result")
+                  }
+                  return Promise.reject(new Error("Empty result"))
+                }
+
                 if (result.size() === 1) {
                   var errorCode = result.get(0)
                   console.warn("Processing resulted in error code:", errorCode)
-                  return Promise.resolve(errorCode)
+                  if (_progressCallback) {
+                    _progressCallback(-1, `Error with code: ${errorCode}`)
+                  }
+                  return Promise.reject(new Error(`Error code: ${errorCode}`))
                 }
 
                 var buffer = new Uint8Array(result.size())
@@ -141,9 +226,18 @@
                   `[${getTimestamp()}] Successfully processed data, size:`,
                   buffer.length
                 )
+
+                // Notify 100% completion
+                if (_progressCallback) {
+                  _progressCallback(100, "Processing complete")
+                }
+
                 return Promise.resolve(buffer)
               } catch (error) {
                 console.error("Error in processGeoJSON:", error)
+                if (_progressCallback) {
+                  _progressCallback(-1, `Error: ${error.message || error}`)
+                }
                 return Promise.reject(error)
               }
             },

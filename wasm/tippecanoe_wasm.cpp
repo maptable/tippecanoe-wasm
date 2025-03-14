@@ -9,6 +9,10 @@
 #include <sys/stat.h> // For mkdir
 #include <cerrno>     // For errno
 #include <stdlib.h>   // For setenv
+#include <unistd.h>   // For read, pipe, etc.
+#include <cstring>    // For strcspn
+#include <thread>     // For thread
+#include <atomic>     // For atomic
 #include "../main.hpp"
 #include "../options.hpp"
 #include "../errors.hpp"
@@ -19,6 +23,32 @@ void clearGlobalState();
 
 int main(int argc, char **argv);
 
+progress_callback_type global_progress_callback;
+
+// Define progress callback function type
+static emscripten::val progressCallback = emscripten::val::null();
+
+void progress_bridge_callback(double percentage, int step, const char *message)
+{
+    if (progressCallback.isNull() || progressCallback.typeOf() != val("function"))
+        return;
+
+    try
+    {
+        progressCallback(percentage, step, std::string(message));
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Exception in progress callback: " << e.what() << std::endl;
+    }
+}
+
+// Set progress callback function
+void setProgressCallback(emscripten::val callback)
+{
+    progressCallback = callback;
+}
+
 std::vector<unsigned char> processGeoJSON(std::string geojsonStr,
                                           std::string outputFormat,
                                           std::string argsStr)
@@ -27,6 +57,8 @@ std::vector<unsigned char> processGeoJSON(std::string geojsonStr,
     {
         setenv("TIPPECANOE_MAX_THREADS", "1", 1);
         setenv("TIPPECANOE_NO_THREADS", "1", 1);
+
+        global_progress_callback = progress_bridge_callback;
 
         // Create temporary directory if it doesn't exist using C++ approach
         std::string tmp_dir = "/tmp";
@@ -46,11 +78,6 @@ std::vector<unsigned char> processGeoJSON(std::string geojsonStr,
                 {
                     std::cout << "Successfully created directory: " << tmp_dir << std::endl;
                 }
-            }
-            else
-            {
-                // Directory exists
-                std::cout << "Directory already exists: " << tmp_dir << std::endl;
             }
         }
         catch (const std::exception &e)
@@ -86,10 +113,10 @@ std::vector<unsigned char> processGeoJSON(std::string geojsonStr,
             return error_byte;
         }
 
-        // Create virtual output path
         std::string output_path = "/tmp/output.";
         output_path += (outputFormat == "mbtiles") ? "mbtiles" : "pmtiles";
 
+        // Prepare arguments for tippecanoe
         const char *args[100 + 1]; // +1 for nullptr terminator
         int argc = 0;
 
@@ -99,36 +126,40 @@ std::vector<unsigned char> processGeoJSON(std::string geojsonStr,
         args[argc++] = strdup("-t");
         args[argc++] = strdup("/tmp");
 
+        // Parse additional arguments
         bool inQuotes = false;
         std::string currentArg;
 
-        for (size_t i = 0; i < argsStr.length(); i++)
+        if (!argsStr.empty())
         {
-            char c = argsStr[i];
-
-            if (c == '"')
+            for (size_t i = 0; i < argsStr.length(); i++)
             {
-                inQuotes = !inQuotes;
-                continue;
-            }
+                char c = argsStr[i];
 
-            if (c == ' ' && !inQuotes)
-            {
-                if (!currentArg.empty())
+                if (c == '"')
                 {
-                    args[argc++] = strdup(currentArg.c_str());
-                    currentArg.clear();
+                    inQuotes = !inQuotes;
+                    continue;
+                }
+
+                if (c == ' ' && !inQuotes)
+                {
+                    if (!currentArg.empty())
+                    {
+                        args[argc++] = strdup(currentArg.c_str());
+                        currentArg.clear();
+                    }
+                }
+                else
+                {
+                    currentArg += c;
                 }
             }
-            else
-            {
-                currentArg += c;
-            }
-        }
 
-        if (!currentArg.empty())
-        {
-            args[argc++] = strdup(currentArg.c_str());
+            if (!currentArg.empty())
+            {
+                args[argc++] = strdup(currentArg.c_str());
+            }
         }
 
         args[argc++] = strdup(input_path.c_str());
@@ -142,7 +173,20 @@ std::vector<unsigned char> processGeoJSON(std::string geojsonStr,
         }
         std::cout << std::endl;
 
-        // Execute conversion
+        // Notify initial progress
+        if (!progressCallback.isNull() && progressCallback.typeOf() == val("function"))
+        {
+            try
+            {
+                progressCallback(0, std::string("Starting tippecanoe process"));
+            }
+            catch (...)
+            {
+                std::cerr << "Exception when calling progress callback" << std::endl;
+                // Continue processing even if callback fails
+            }
+        }
+
         int result_code = main(argc, const_cast<char **>(args));
 
         // Reset global state after main execution
@@ -151,7 +195,11 @@ std::vector<unsigned char> processGeoJSON(std::string geojsonStr,
         // Free all allocated argument memory
         for (int i = 0; i < argc; i++)
         {
-            free((void *)args[i]);
+            if (args[i])
+            {
+                free((void *)args[i]);
+                args[i] = nullptr;
+            }
         }
 
         if (result_code == EXIT_SUCCESS)
@@ -164,7 +212,7 @@ std::vector<unsigned char> processGeoJSON(std::string geojsonStr,
                     throw std::runtime_error("Failed to open output file: " + output_path);
                 }
 
-                // 读取文件到 vector
+                // Read file into vector
                 file.seekg(0, std::ios::end);
                 size_t fileSize = file.tellg();
                 file.seekg(0, std::ios::beg);
@@ -175,6 +223,19 @@ std::vector<unsigned char> processGeoJSON(std::string geojsonStr,
 
                 std::cout << "Output data size: " << output_data.size() << " bytes" << std::endl;
 
+                // Notify completion progress
+                if (!progressCallback.isNull() && progressCallback.typeOf() == val("function"))
+                {
+                    try
+                    {
+                        progressCallback(100, std::string("complete"));
+                    }
+                    catch (...)
+                    {
+                    }
+                }
+
+                // Clean up temporary files
                 std::remove(input_path.c_str());
                 std::remove(output_path.c_str());
 
@@ -234,6 +295,7 @@ EMSCRIPTEN_BINDINGS(tippecanoe_module)
     register_vector<unsigned char>("Vector<unsigned char>");
     function("processGeoJSON", &processGeoJSON);
     function("checkFSReady", &checkFSReady);
+    function("setProgressCallback", &setProgressCallback);
 }
 
 void clearGlobalState()
@@ -311,6 +373,7 @@ void clearGlobalState()
     unidecode_data.clear();
     maximum_string_attribute_length = 0;
     accumulate_numeric = "";
+    global_progress_callback = NULL;
 
     order_by.clear();
     order_reverse = false;

@@ -370,6 +370,19 @@ struct drop_densest
 	}
 };
 
+void report_progress(double percentage, int step, const char *message)
+{
+	if (global_progress_callback != NULL)
+	{
+		global_progress_callback(percentage, step, message);
+	}
+	else if (!quiet && !quiet_progress && progress_time())
+	{
+		fprintf(stderr, " %s : %3.1f%% \r", message, percentage);
+		fflush(stderr);
+	}
+}
+
 int calc_feature_minzoom(struct index *ix, struct drop_state *ds, int maxzoom, double gamma)
 {
 	int feature_minzoom = 0;
@@ -463,11 +476,10 @@ static void merge(struct mergelist *merges, size_t nmerges, unsigned char *map, 
 
 		// Count this as an 75%-accomplishment, since we already 25%-counted it
 		*progress += (ix.end - ix.start) * 3 / 4;
-		if (!quiet && !quiet_progress && progress_time() && 100 * *progress / *progress_max != *progress_reported)
+		if (100 * *progress / *progress_max != *progress_reported)
 		{
-			fprintf(stderr, "Reordering geometry: %lld%% \r", 100 * *progress / *progress_max);
-			fflush(stderr);
 			*progress_reported = 100 * *progress / *progress_max;
+			report_progress(*progress_reported, 1, "Reordering geometry");
 		}
 
 		ix.start = pos;
@@ -761,7 +773,6 @@ void radix1(int *geomfds_in, int *indexfds_in, int inputs, int prefix, int split
 
 		if (indexst.st_size != 0)
 		{
-			// 替换 mmap 为文件读取
 			char *indexdata = read_file(indexfds_in[i], indexst.st_size);
 			char *geomdata = read_file(geomfds_in[i], geomst.st_size);
 
@@ -775,11 +786,10 @@ void radix1(int *geomfds_in, int *indexfds_in, int inputs, int prefix, int split
 
 				// Count this as a 25%-accomplishment, since we will copy again
 				*progress += (ix.end - ix.start) / 4;
-				if (!quiet && !quiet_progress && progress_time() && 100 * *progress / *progress_max != *progress_reported)
+				if (100 * *progress / *progress_max != *progress_reported)
 				{
-					fprintf(stderr, "Reordering geometry: %lld%% \r", 100 * *progress / *progress_max);
-					fflush(stderr);
 					*progress_reported = 100 * *progress / *progress_max;
+					report_progress(*progress_reported, 1, "Reordering geometry");
 				}
 
 				ix.start = pos;
@@ -911,11 +921,10 @@ void radix1(int *geomfds_in, int *indexfds_in, int inputs, int prefix, int split
 
 					// Count this as an 75%-accomplishment, since we already 25%-counted it
 					*progress += (ix.end - ix.start) * 3 / 4;
-					if (!quiet && !quiet_progress && progress_time() && 100 * *progress / *progress_max != *progress_reported)
+					if (100 * *progress / *progress_max != *progress_reported)
 					{
-						fprintf(stderr, "Reordering geometry: %lld%% \r", 100 * *progress / *progress_max);
-						fflush(stderr);
 						*progress_reported = 100 * *progress / *progress_max;
+						report_progress(*progress_reported, 1, "Reordering geometry");
 					}
 
 					ix.start = pos;
@@ -1933,7 +1942,6 @@ std::pair<int, metadata> read_input(std::vector<source> &sources, char *fname, i
 		exit(EXIT_NODATA);
 	}
 
-	// 替换对 index 文件的 mmap
 	char *indexdata = read_file(indexfd, indexpos);
 	struct index *map = (struct index *)indexdata;
 	long long indices = indexpos / sizeof(struct index);
@@ -1992,11 +2000,7 @@ std::pair<int, metadata> read_input(std::vector<source> &sources, char *fname, i
 			if (nprogress != progress)
 			{
 				progress = nprogress;
-				if (!quiet && !quiet_progress && progress_time())
-				{
-					fprintf(stderr, "Maxzoom: %lld%% \r", progress);
-					fflush(stderr);
-				}
+				report_progress(progress, 4, "Maxzoom");
 			}
 		}
 
@@ -2222,11 +2226,7 @@ std::pair<int, metadata> read_input(std::vector<source> &sources, char *fname, i
 			if (nprogress != progress)
 			{
 				progress = nprogress;
-				if (!quiet && !quiet_progress && progress_time())
-				{
-					fprintf(stderr, "Base zoom/drop rate: %lld%% \r", progress);
-					fflush(stderr);
-				}
+				report_progress(progress, 3, "Base zoom/drop rate");
 			}
 
 			int z;

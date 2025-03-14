@@ -121,6 +121,25 @@
             width: 0%;
             transition: width 0.3s;
         }
+
+        .log-container {
+            margin-top: 20px;
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            background-color: #f9f9f9;
+        }
+
+        .progress-text {
+            margin-top: 5px;
+            text-align: center;
+            font-size: 14px;
+            color: #333;
+        }
     </style>
 </head>
 
@@ -156,8 +175,11 @@
             <div class="progress-bar" id="progress-container" style="display: none;">
                 <div class="progress" id="progress-bar"></div>
             </div>
+            <div class="progress-text" id="progress-text"></div>
 
             <div id="status" class="status"></div>
+
+            <div class="log-container" id="log-container"></div>
         </div>
     </div>
 
@@ -206,6 +228,9 @@
 
                     tippecanoe = module.createTippecanoeInterface();
 
+                    // Set up progress reporting
+                    tippecanoe.setProgressCallback(handleProgressUpdate);
+
                     if (!tippecanoe.isReady()) {
                         console.error("Filesystem not ready, FS object:", module.FS);
                         throw new Error("Filesystem initialization failed");
@@ -220,6 +245,33 @@
             } catch (error) {
                 console.error("Module initialization error:", error);
                 updateStatus("Failed to load WASM module: " + error, "error");
+            }
+        }
+
+        // Handle progress updates from the WASM module
+        function handleProgressUpdate(progress, step, message) {
+            console.log(`${step}, ${message}, ${progress}${step === 2 ? 'M' : '%'}`);
+
+            const progressBar = document.getElementById("progress-bar");
+            const progressText = document.getElementById("progress-text");
+            const progressContainer = document.getElementById("progress-container");
+            const logContainer = document.getElementById("log-container");
+
+            // Ensure progress container is visible
+            progressContainer.style.display = "block";
+
+            if (progress >= 0 && progress <= 100) {
+                // Update progress bar for percentage-based progress
+                progressBar.style.width = `${progress} % `;
+                progressText.textContent = `${progress} %: ${message}`;
+            } else if (progress === -1) {
+                // Log message for non-percentage informational updates
+                const logEntry = document.createElement("div");
+                logEntry.textContent = message;
+                logContainer.appendChild(logEntry);
+
+                // Auto-scroll to bottom
+                logContainer.scrollTop = logContainer.scrollHeight;
             }
         }
 
@@ -292,7 +344,12 @@
 
                 // Show progress
                 document.getElementById("progress-container").style.display = "block";
-                simulateProgress();
+                document.getElementById("progress-bar").style.width = "0%";
+                document.getElementById("progress-text").textContent = "Starting conversion...";
+
+                // Clear log container
+                document.getElementById("log-container").innerHTML = "";
+
                 updateStatus("Converting GeoJSON... This may take a while for large files.", "loading");
 
                 // Disable UI
@@ -303,7 +360,7 @@
 
                 // Check for error (if number is returned)
                 if (typeof resultBuffer === 'number') {
-                    updateStatus(`Conversion failed with error code: ${resultBuffer}`, "error");
+                    updateStatus(`Conversion failed with error code: ${resultBuffer} `, "error");
                     document.getElementById("convert-btn").disabled = false;
                     document.getElementById("download-btn").disabled = true;
                 } else {
@@ -316,10 +373,6 @@
                 updateStatus("Error during conversion: " + error.message, "error");
                 document.getElementById("convert-btn").disabled = false;
             }
-
-            // Reset progress bar
-            document.getElementById("progress-bar").style.width = "0%";
-            document.getElementById("progress-container").style.display = "none";
         });
 
         // Format file size in human readable format
@@ -342,7 +395,7 @@
 
             // Show file size information
             const fileSize = resultBuffer.byteLength;
-            updateStatus(`Preparing download (${formatFileSize(fileSize)})...`, "loading");
+            updateStatus(`Preparing download(${formatFileSize(fileSize)})...`, "loading");
 
             // Show progress container
             document.getElementById("progress-container").style.display = "block";
@@ -358,7 +411,7 @@
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement("a");
                     a.href = url;
-                    a.download = `${fileName}.${extension}`;
+                    a.download = `${fileName}.${extension} `;
                     document.body.appendChild(a);
 
                     // Download with progress simulation
@@ -377,9 +430,9 @@
                 } else {
                     // For larger files, use saveAs dialog if available (optional FileSaver.js approach)
                     if (typeof saveAs !== 'undefined') {
-                        updateStatus(`Preparing large file (${formatFileSize(fileSize)})...`, "loading");
+                        updateStatus(`Preparing large file(${formatFileSize(fileSize)})...`, "loading");
                         simulateDownloadProgress();
-                        saveAs(blob, `${fileName}.${extension}`);
+                        saveAs(blob, `${fileName}.${extension} `);
                         setTimeout(function () {
                             updateStatus(`Large file download initiated: ${fileName}.${extension} (${formatFileSize(fileSize)})`, "success");
                             document.getElementById("progress-container").style.display = "none";
@@ -388,13 +441,13 @@
                         // Fallback for large files
                         const url = URL.createObjectURL(blob);
 
-                        updateStatus(`Opening save dialog for large file (${formatFileSize(fileSize)})...`, "loading");
+                        updateStatus(`Opening save dialog for large file(${formatFileSize(fileSize)})...`, "loading");
                         simulateDownloadProgress();
 
                         // Try to use browser's save dialog
                         const a = document.createElement("a");
                         a.href = url;
-                        a.download = `${fileName}.${extension}`;
+                        a.download = `${fileName}.${extension} `;
                         a.target = "_blank";
                         document.body.appendChild(a);
                         a.click();
@@ -440,21 +493,6 @@
             const statusElement = document.getElementById("status");
             statusElement.textContent = message;
             statusElement.className = "status " + type;
-        }
-
-        // Simulate progress for better UX
-        function simulateProgress() {
-            const progressBar = document.getElementById("progress-bar");
-            let width = 0;
-            const interval = setInterval(() => {
-                if (width >= 90) {
-                    clearInterval(interval);
-                } else {
-                    width += Math.random() * 5;
-                    if (width > 90) width = 90;
-                    progressBar.style.width = width + "%";
-                }
-            }, 300);
         }
 
         // Initialize
