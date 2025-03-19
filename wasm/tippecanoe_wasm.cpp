@@ -223,18 +223,6 @@ std::vector<unsigned char> processGeoJSON(std::string geojsonStr,
 
                 std::cout << "Output data size: " << output_data.size() << " bytes" << std::endl;
 
-                // Notify completion progress
-                if (!progressCallback.isNull() && progressCallback.typeOf() == val("function"))
-                {
-                    try
-                    {
-                        progressCallback(100, std::string("complete"));
-                    }
-                    catch (...)
-                    {
-                    }
-                }
-
                 // Clean up temporary files
                 std::remove(input_path.c_str());
                 std::remove(output_path.c_str());

@@ -151,7 +151,8 @@
             <h2>Input GeoJSON</h2>
             <div class="file-upload-area">
                 <p>Select a GeoJSON file to convert:</p>
-                <input type="file" id="geojson-file" accept=".geojson,.json">
+                <input type="file" id="geojson-file" accept=".geojson,.json" title="Select GeoJSON file"
+                    aria-label="Select GeoJSON file">
             </div>
         </div>
 
@@ -200,6 +201,13 @@
                 const moduleConfig = {
                     print: text => console.log('[WASM stdout]:', text),
                     printErr: text => console.error('[WASM stderr]:', text),
+
+                    locateFile: (file, path) => {
+                        if (file.endsWith('.wasm')) {
+                            console.log("Locating WASM file...", path, file);
+                        }
+                        return path + file;
+                    },
 
                     noFSInit: false,
 

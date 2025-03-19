@@ -71,10 +71,6 @@ if(EMSCRIPTEN)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --post-js=${INTERFACE_JS} --extern-post-js=${INTERFACE_JS}")
 
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','UTF8ToString','stringToNewUTF8','FS']")
-
-    set(PRE_JS "${CMAKE_CURRENT_SOURCE_DIR}/pre_module.js")
-    message(STATUS "Using pre_module.js for filesystem initialization")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --pre-js=${PRE_JS}")
 endif()
 
 # Create WASM target

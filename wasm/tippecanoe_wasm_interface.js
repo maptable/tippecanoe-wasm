@@ -4,7 +4,13 @@
  */
 
 ;(function () {
-  // Store the original module creation function
+  // Define processing steps
+  const STEPS = {
+    START: 0,
+    ERROR: -1
+  }
+
+  // Store the original module creation function and its configuration
   var originalCreateModule = createTippecanoeModule
 
   // Replace the global function with our enhanced version
@@ -35,20 +41,13 @@
 
     // Add our own preRun function to initialize filesystem
     moduleOverrides.preRun.unshift(function () {
-      console.log("Pre-run: Setting up filesystem...")
-
-      // Create a simple consistency check function
       if (typeof this.FS === "undefined") {
         console.warn("FS object not available in preRun")
       } else {
-        console.log("FS object is available in preRun")
         try {
-          // Create the tmp directory early
           this.FS.mkdir("/tmp")
-          console.log("Successfully created /tmp directory")
         } catch (e) {
           // Directory might already exist
-          console.log("Could not create /tmp directory (might already exist)")
         }
       }
     })
@@ -77,12 +76,7 @@
     // Once the module is loaded, add our interface to it
     return modulePromise
       .then(function (Module) {
-        console.log("Module initialized, attaching interface...")
-
-        // Wait for the filesystem to be ready
-        if (Module.FS) {
-          console.log("FS is available immediately")
-        } else {
+        if (!Module.FS) {
           console.error("FS object is not available after initialization!")
         }
 
@@ -110,8 +104,6 @@
           return {
             // Initialize method - check file system readiness
             init: function () {
-              console.log("Initializing tippecanoe interface")
-
               if (!this.isReady()) {
                 console.error("File system is not ready!")
                 return Promise.reject(new Error("Filesystem not ready"))
@@ -141,7 +133,6 @@
                       }
                     }
                   })
-                  console.log("Progress callback successfully registered")
                 } else {
                   console.warn("C++ progress callback not available")
                 }
@@ -159,29 +150,21 @@
                   return Promise.reject(new Error("Filesystem not ready"))
                 }
 
-                console.log(
-                  `[${getTimestamp()}] Processing GeoJSON with format:`,
-                  outputFormat,
-                  "Args:",
-                  args || "(none)"
-                )
-
                 // Notify progress start
                 if (_progressCallback) {
-                  _progressCallback(0, "Starting process...")
+                  _progressCallback(0, STEPS.START, "Starting process...")
                 }
 
                 try {
                   // Safety check for argument length
-                  if (geojsonContent && geojsonContent.length > 0) {
-                    console.log(
-                      "GeoJSON content length:",
-                      geojsonContent.length
-                    )
-                  } else {
+                  if (!geojsonContent || geojsonContent.length === 0) {
                     console.warn("Warning: Empty GeoJSON content")
                     if (_progressCallback) {
-                      _progressCallback(-1, "Error: Empty GeoJSON content")
+                      _progressCallback(
+                        -1,
+                        STEPS.ERROR,
+                        "Empty GeoJSON content"
+                      )
                     }
                     return Promise.reject(new Error("Empty GeoJSON content"))
                   }
@@ -194,7 +177,11 @@
                 } catch (e) {
                   console.error("Exception during processGeoJSON call:", e)
                   if (_progressCallback) {
-                    _progressCallback(-1, `Error: ${e.message || e}`)
+                    _progressCallback(
+                      -1,
+                      STEPS.ERROR,
+                      `Error: ${e.message || e}`
+                    )
                   }
                   return Promise.reject(e)
                 }
@@ -203,7 +190,7 @@
                 if (!result || result.size() === 0) {
                   console.warn("Empty result from processGeoJSON")
                   if (_progressCallback) {
-                    _progressCallback(-1, "Error: Empty result")
+                    _progressCallback(-1, STEPS.ERROR, "Empty result")
                   }
                   return Promise.reject(new Error("Empty result"))
                 }
@@ -212,7 +199,11 @@
                   var errorCode = result.get(0)
                   console.warn("Processing resulted in error code:", errorCode)
                   if (_progressCallback) {
-                    _progressCallback(-1, `Error with code: ${errorCode}`)
+                    _progressCallback(
+                      -1,
+                      STEPS.ERROR,
+                      `Error code: ${errorCode}`
+                    )
                   }
                   return Promise.reject(new Error(`Error code: ${errorCode}`))
                 }
@@ -222,21 +213,15 @@
                   buffer[i] = result.get(i)
                 }
 
-                console.log(
-                  `[${getTimestamp()}] Successfully processed data, size:`,
-                  buffer.length
-                )
-
-                // Notify 100% completion
-                if (_progressCallback) {
-                  _progressCallback(100, "Processing complete")
-                }
-
                 return Promise.resolve(buffer)
               } catch (error) {
                 console.error("Error in processGeoJSON:", error)
                 if (_progressCallback) {
-                  _progressCallback(-1, `Error: ${error.message || error}`)
+                  _progressCallback(
+                    -1,
+                    STEPS.ERROR,
+                    `Error: ${error.message || error}`
+                  )
                 }
                 return Promise.reject(error)
               }
@@ -311,7 +296,6 @@
           }
         }
 
-        console.log("Interface attached to module")
         return Module
       })
       .catch(function (err) {
