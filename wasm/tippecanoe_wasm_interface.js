@@ -30,6 +30,15 @@
       }
     }
 
+    if (moduleOverrides.wasmUrl) {
+      moduleOverrides.locateFile = function (path, prefix) {
+        if (path.endsWith(".wasm")) {
+          return moduleOverrides.wasmUrl
+        }
+        return prefix + path
+      }
+    }
+
     // Save progress callback reference at module level for error reporting
     var progressCallbackRef = null
 
