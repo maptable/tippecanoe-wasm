@@ -150,6 +150,30 @@
               }
             },
 
+            getLastMetadata: function () {
+              try {
+                if (typeof Module.getLastMetadata !== "function") {
+                  console.warn("Metadata function not available")
+                  return null
+                }
+
+                const metadataJson = Module.getLastMetadata()
+                if (!metadataJson || metadataJson.length === 0) {
+                  return null
+                }
+
+                try {
+                  return JSON.parse(metadataJson)
+                } catch (e) {
+                  console.error("Error parsing metadata JSON:", e)
+                  return metadataJson // Return raw string if parsing fails
+                }
+              } catch (error) {
+                console.error("Error getting metadata:", error)
+                return null
+              }
+            },
+
             // Process GeoJSON to PMTiles or MBTiles
             processGeoJSON: function (geojsonContent, outputFormat, args) {
               try {

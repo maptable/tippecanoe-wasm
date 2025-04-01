@@ -121,6 +121,8 @@ char **av;
 
 std::vector<clipbbox> clipbboxes;
 
+void saveMetadata(const metadata &meta);
+
 char *read_file(int fd, size_t size)
 {
 	char *data = (char *)malloc(size);
@@ -2610,6 +2612,11 @@ std::pair<int, metadata> read_input(std::vector<source> &sources, char *fname, i
 	}
 
 	metadata m = make_metadata(fname, minzoom, maxzoom, minlat, minlon, maxlat, maxlon, minlat2, minlon2, maxlat2, maxlon2, midlat, midlon, attribution, merged_lm, true, description, !prevent[P_TILE_STATS], attribute_descriptions, "tippecanoe", commandline, strategies, basezoom, droprate, retain_points_multiplier);
+
+#ifdef WASM_BUILD
+	saveMetadata(m);
+#endif
+
 	if (outdb != NULL)
 	{
 		mbtiles_write_metadata(outdb, m, forcetable);

@@ -49,6 +49,12 @@ void setProgressCallback(emscripten::val callback)
     progressCallback = callback;
 }
 
+static std::string last_metadata_json;
+std::string getLastMetadata()
+{
+    return last_metadata_json;
+}
+
 std::vector<unsigned char> processGeoJSON(std::string geojsonStr,
                                           std::string outputFormat,
                                           std::string argsStr)
@@ -59,6 +65,8 @@ std::vector<unsigned char> processGeoJSON(std::string geojsonStr,
         setenv("TIPPECANOE_NO_THREADS", "1", 1);
 
         global_progress_callback = progress_bridge_callback;
+
+        last_metadata_json = "";
 
         // Create temporary directory if it doesn't exist using C++ approach
         std::string tmp_dir = "/tmp";
@@ -284,6 +292,7 @@ EMSCRIPTEN_BINDINGS(tippecanoe_module)
     function("processGeoJSON", &processGeoJSON);
     function("checkFSReady", &checkFSReady);
     function("setProgressCallback", &setProgressCallback);
+    function("getLastMetadata", &getLastMetadata); // 添加到模块绑定
 }
 
 void clearGlobalState()
@@ -376,4 +385,23 @@ void clearGlobalState()
 
     // Clear clipbboxes
     clipbboxes.clear();
+}
+
+std::string metadata_to_json(const metadata &meta)
+{
+    std::stringstream json;
+    json << "{";
+    json << "\"version\":\"" << meta.version << "\",";
+    json << "\"minzoom\":" << meta.minzoom << ",";
+    json << "\"maxzoom\":" << meta.maxzoom << ",";
+    json << "\"center\":[" << meta.center_lon << "," << meta.center_lat << "," << meta.center_z << "],";
+    json << "\"bounds\":[" << meta.minlon << "," << meta.minlat << "," << meta.maxlon << "," << meta.maxlat << "],";
+    json << "\"format\":\"" << meta.format << "\"";
+    json << "}";
+    return json.str();
+}
+
+void saveMetadata(const metadata &meta)
+{
+    last_metadata_json = metadata_to_json(meta);
 }
