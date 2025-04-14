@@ -1,3 +1,12 @@
+# 2.77.0
+
+* Add --deduplicate-by-id option to tippecanoe-overzoom
+
+# 2.76.0
+
+* Add missing case for accumulating the mean of attributes that are inconsistently present
+* Add --keep-point-cluster-position (#326)
+
 # 2.75.1
 
 * Further reduce memory consumption in attribute sorting and tilestats tracking
