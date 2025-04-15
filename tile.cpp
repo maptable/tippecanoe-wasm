@@ -2106,7 +2106,6 @@ long long write_tile(decompressor *geoms, std::atomic<long long> *geompos_in, ch
 		int prefilter_write = -1, prefilter_read = -1;
 		pid_t prefilter_pid = 0;
 		FILE *prefilter_fp = NULL;
-		pthread_t prefilter_writer;
 		run_prefilter_args rpa; // here so it stays in scope until joined
 		FILE *prefilter_read_fp = NULL;
 		json_pull *prefilter_jp = NULL;
@@ -2814,7 +2813,6 @@ long long write_tile(decompressor *geoms, std::atomic<long long> *geompos_in, ch
 			}
 
 			{
-				pthread_t pthreads[tasks];
 				std::vector<simplification_worker_arg> args;
 				args.resize(tasks);
 				for (int i = 0; i < tasks; i++)
@@ -3729,7 +3727,6 @@ int traverse_zooms(int *geomfd, off_t *geom_size, char *global_stringpool, std::
 
 		for (size_t pass = 0;; pass++)
 		{
-			pthread_t pthreads[threads];
 			std::vector<write_tile_args> args;
 			args.resize(threads);
 			std::atomic<int> running(threads);

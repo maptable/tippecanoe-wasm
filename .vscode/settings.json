@@ -83,6 +83,12 @@
     "bitset": "cpp",
     "print": "cpp",
     "chrono": "cpp",
-    "coroutine": "cpp"
+    "coroutine": "cpp",
+    "numeric": "cpp",
+    "system_error": "cpp",
+    "format": "cpp",
+    "typeindex": "cpp",
+    "valarray": "cpp",
+    "*.inc": "cpp"
   }
 }

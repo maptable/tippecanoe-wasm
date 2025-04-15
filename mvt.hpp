@@ -82,7 +82,7 @@ double mvt_value_to_double(mvt_value const &v);
 
 struct mvt_value {
 	long /* mvt_value_type */ type : 5;
-	long count : 64 - 5;
+	long long count : 64 - 5;
 	std::shared_ptr<std::string> s;
 
 	union {

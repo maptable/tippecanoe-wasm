@@ -180,13 +180,13 @@
 
             <label for="output-format">Output Format:</label>
             <select id="output-format">
-                <option value="pmtiles">PMTiles</option>
                 <option value="mbtiles">MBTiles</option>
+                <option value="pmtiles">PMTiles</option>
             </select>
 
             <label for="additional-args">Arguments:</label>
             <input type="text" id="additional-args"
-                value="-zg --force --detect-shared-borders --visvalingam --simplification=10 --simplify-only-low-zooms --coalesce-densest-as-needed --coalesce --reorder --no-line-simplification --extend-zooms-if-still-dropping"
+                value="-zg -Z1 -Bg --force --smallest-maximum-zoom-guess=12 --preserve-point-density-threshold=4096 --drop-densest-as-needed --reorder --extend-zooms-if-still-dropping"
                 placeholder="-z14 -Z0 --layer=mylayer --drop-smallest-as-needed">
 
             <button id="convert-btn">Convert</button>

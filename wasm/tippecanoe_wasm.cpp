@@ -23,8 +23,6 @@ void clearGlobalState();
 
 int main(int argc, char **argv);
 
-progress_callback_type global_progress_callback;
-
 // Define progress callback function type
 static emscripten::val progressCallback = emscripten::val::null();
 

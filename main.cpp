@@ -372,6 +372,9 @@ struct drop_densest
 	}
 };
 
+// global progress callback
+progress_callback_type global_progress_callback;
+
 void report_progress(double percentage, int step, const char *message)
 {
 	if (global_progress_callback != NULL)
@@ -881,7 +884,6 @@ void radix1(int *geomfds_in, int *indexfds_in, int inputs, int prefix, int split
 					merges[a].start = merges[a].end = 0;
 				}
 
-				pthread_t pthreads[CPUS];
 				std::vector<sort_arg> args;
 
 				for (size_t a = 0; a < CPUS; a++)
@@ -2459,7 +2461,9 @@ std::pair<int, metadata> read_input(std::vector<source> &sources, char *fname, i
 					else
 					{
 						int feature_minzoom = calc_feature_minzoom(&map[ip], ds, maxzoom, gamma);
-						geom[map[ip].end - 1] = feature_minzoom;
+						long long pos = map[ip].end - 1;
+						geom[pos] = feature_minzoom;
+						pwrite(geomfd, &feature_minzoom, sizeof(signed char), pos * sizeof(signed char));
 					}
 				}
 			}
@@ -2474,12 +2478,16 @@ std::pair<int, metadata> read_input(std::vector<source> &sources, char *fname, i
 
 				for (; i < keep_count && i < ddv.size(); i++)
 				{
-					geom[map[ddv[i].seq].end - 1] = z;
+					long long pos = map[ddv[i].seq].end - 1;
+					geom[pos] = z;
+					pwrite(geomfd, &z, sizeof(signed char), pos * sizeof(signed char));
 				}
 			}
 			for (; i < ddv.size(); i++)
 			{
-				geom[map[ddv[i].seq].end - 1] = basezoom;
+				long long pos = map[ddv[i].seq].end - 1;
+				geom[pos] = basezoom;
+				pwrite(geomfd, &basezoom, sizeof(signed char), pos * sizeof(signed char));
 			}
 		}
 		else
@@ -2491,7 +2499,9 @@ std::pair<int, metadata> read_input(std::vector<source> &sources, char *fname, i
 					fprintf(stderr, "Mismatched index at %lld: %lld vs %lld\n", ip, map[ip].start, map[ip].end);
 				}
 				int feature_minzoom = calc_feature_minzoom(&map[ip], ds, maxzoom, gamma);
-				geom[map[ip].end - 1] = feature_minzoom;
+				long long pos = map[ip].end - 1;
+				geom[pos] = feature_minzoom;
+				pwrite(geomfd, &feature_minzoom, sizeof(signed char), pos * sizeof(signed char));
 			}
 		}
 

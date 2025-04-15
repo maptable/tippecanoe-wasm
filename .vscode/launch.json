@@ -8,15 +8,13 @@
       "program": "${workspaceFolder}/tippecanoe",
       "args": [
         "-zg",
+        "-Z1",
+        "-Bg",
         "--force",
-        "--detect-shared-borders",
-        "--visvalingam",
-        "--simplification=10",
-        "--simplify-only-low-zooms",
-        "--coalesce-densest-as-needed",
-        "--coalesce",
+        "--smallest-maximum-zoom-guess=12",
+        "--preserve-point-density-threshold=4096",
+        "--drop-densest-as-needed",
         "--reorder",
-        "--no-line-simplification",
         "--extend-zooms-if-still-dropping",
         "-o",
         "build/test.mbtiles",
@@ -24,7 +22,16 @@
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
-      "environment": [],
+      "environment": [
+        {
+          "name": "TIPPECANOE_MAX_THREADS",
+          "value": "1"
+        },
+        {
+          "name": "TIPPECANOE_NO_THREADS",
+          "value": "1"
+        }
+      ],
       "externalConsole": false,
       "MIMode": "lldb",
       "preLaunchTask": "build-debug"
