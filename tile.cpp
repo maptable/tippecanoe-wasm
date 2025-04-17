@@ -2503,12 +2503,12 @@ long long write_tile(decompressor *geoms, std::atomic<long long> *geompos_in, ch
 				size_t adjusted_max_tile_size = max_tile_size;
 				if (lead_features_count > 0)
 				{
-					adjusted_max_tile_size = adjusted_max_tile_size * (lead_features_count + other_multiplier_cluster_features_count) / lead_features_count;
+					adjusted_max_tile_size = (size_t)((double)adjusted_max_tile_size * (double)(lead_features_count + other_multiplier_cluster_features_count) / (double)lead_features_count);
 				}
 				size_t adjusted_max_tile_features = max_tile_features;
 				if (lead_features_count > 0)
 				{
-					adjusted_max_tile_features = adjusted_max_tile_features * (lead_features_count + other_multiplier_cluster_features_count) / lead_features_count;
+					adjusted_max_tile_features = (size_t)((double)adjusted_max_tile_features * (double)(lead_features_count + other_multiplier_cluster_features_count) / (double)lead_features_count);
 				}
 
 				// The number of features in the tile, meanwhile, is inflated
@@ -2520,7 +2520,7 @@ long long write_tile(decompressor *geoms, std::atomic<long long> *geompos_in, ch
 				size_t adjusted_feature_count = lead_features_count + other_multiplier_cluster_features_count;
 				if (kept > 0)
 				{
-					adjusted_feature_count = adjusted_feature_count * (skipped + kept) / kept;
+					adjusted_feature_count = (size_t)((double)adjusted_feature_count * (double)(skipped + kept) / (double)kept);
 				}
 
 				if (too_many_bytes || (adjusted_feature_count > adjusted_max_tile_size && !prevent[P_KILOBYTE_LIMIT]))
@@ -2694,12 +2694,12 @@ long long write_tile(decompressor *geoms, std::atomic<long long> *geompos_in, ch
 		size_t adjusted_max_tile_size = max_tile_size;
 		if (lead_features_count > 0)
 		{
-			adjusted_max_tile_size = adjusted_max_tile_size * (lead_features_count + other_multiplier_cluster_features_count) / lead_features_count;
+			adjusted_max_tile_size = (size_t)((double)adjusted_max_tile_size * (double)(lead_features_count + other_multiplier_cluster_features_count) / (double)lead_features_count);
 		}
 		size_t adjusted_max_tile_features = max_tile_features;
 		if (lead_features_count > 0)
 		{
-			adjusted_max_tile_features = adjusted_max_tile_features * (lead_features_count + other_multiplier_cluster_features_count) / lead_features_count;
+			adjusted_max_tile_features = (size_t)((double)adjusted_max_tile_features * (double)(lead_features_count + other_multiplier_cluster_features_count) / (double)lead_features_count);
 		}
 
 		// Operations on the features within each layer:

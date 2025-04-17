@@ -58,7 +58,6 @@ if(EMSCRIPTEN)
         -Wno-c++11-narrowing
         -Wno-implicit-const-int-float-conversion
         -Wno-sign-compare
-        -Wno-unused-parameter
     )
     
     # Set flags
